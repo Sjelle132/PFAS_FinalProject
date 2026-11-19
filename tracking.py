@@ -3,7 +3,7 @@ import numpy as np
 
 
 class CustomizedKalmanFilter():
-    def __init__(self, dt, is3D, init_uncertainty=1000, x_init_measurement_uncertainty=0.5, y_init_measurement_uncertainty=0.5, z_init_measurement_uncertainty=0.5):
+    def __init__(self, dt, is3D, init_uncertainty=1000, x_init_measurement_uncertainty=0.5, y_init_measurement_uncertainty=0.5, z_init_measurement_uncertainty=0.5, x_init_process_variance=0.1, y_init_process_variance=0.1, z_init_process_variance=0.1):
         no_of_states = 6
         if is3D:
             no_of_states = 9
@@ -34,7 +34,23 @@ class CustomizedKalmanFilter():
                                [0, 1, 0, 0, 0, 0, 0, 0, 0],
                                [0, 0, 1, 0, 0, 0, 0, 0, 0]])
             self.R = np.diag([x_init_measurement_uncertainty, y_init_measurement_uncertainty, z_init_measurement_uncertainty])
-        else:
+            A = (dt ** 5) / 20
+            B = (dt ** 4) / 8
+            C = (dt ** 3) / 6
+            D = (dt ** 3) / 3
+            E = (dt ** 2) / 2
+            self.Q = np.array([
+                [x_init_process_variance * A, 0, 0, x_init_process_variance * B, 0, 0, x_init_process_variance * C, 0, 0],
+                [0, y_init_process_variance * A, 0, 0, y_init_process_variance * B, 0, 0, y_init_process_variance * C, 0],
+                [0, 0, z_init_process_variance * A, 0, 0, z_init_process_variance * B, 0, 0, z_init_process_variance * C],
+                [x_init_process_variance * B, 0, 0, x_init_process_variance * D, 0, 0, x_init_process_variance * E, 0, 0],
+                [0, y_init_process_variance * B, 0, 0, y_init_process_variance * D, 0, 0, y_init_process_variance * E, 0],
+                [0, 0, z_init_process_variance * B, 0, 0, z_init_process_variance * D, 0, 0, z_init_process_variance * E],
+                [x_init_process_variance * C, 0, 0, x_init_process_variance * E, 0, 0, x_init_process_variance * dt, 0, 0],
+                [0, y_init_process_variance * C, 0, 0, y_init_process_variance * E, 0, 0, y_init_process_variance * dt, 0],
+                [0, 0, z_init_process_variance * C, 0, 0, z_init_process_variance * E, 0, 0, z_init_process_variance * dt]
+            ])
+        else: 
             self.F = np.array([[1, 0, dt, 0, 0.5*(dt**2), 0],
               [0, 1, 0, dt, 0, 0.5*(dt**2)],
               [0, 0, 1, 0, dt, 0],
@@ -46,6 +62,14 @@ class CustomizedKalmanFilter():
                            [0, 1, 0, 0, 0, 0]], dtype=float)
 
             self.R = np.diag([x_init_measurement_uncertainty, y_init_measurement_uncertainty])
+            self.Q = np.array([
+                [x_init_process_variance * ((dt ** 5) / 20), 0, x_init_process_variance * ((dt ** 4) / 8), 0, x_init_process_variance * ((dt ** 3) / 6), 0],
+                [0, y_init_process_variance * ((dt ** 5) / 20), 0, y_init_process_variance * ((dt ** 4) / 8), 0, y_init_process_variance * ((dt ** 3) / 6)],
+                [x_init_process_variance * ((dt ** 4) / 8), 0, x_init_process_variance * ((dt ** 3) / 3), 0, x_init_process_variance * ((dt ** 2) / 2), 0],
+                [0, y_init_process_variance * ((dt ** 4) / 8), 0, y_init_process_variance * ((dt ** 3) / 3), 0, y_init_process_variance * ((dt ** 2) / 2)],
+                [x_init_process_variance * ((dt ** 3) / 6), 0, x_init_process_variance * ((dt ** 2) / 2), 0, x_init_process_variance * dt, 0],
+                [0, y_init_process_variance * ((dt ** 3) / 6), 0, y_init_process_variance * ((dt ** 2) / 2), 0, y_init_process_variance * dt]
+            ])
 
         # self.R = np.identity(no_of_states // 3) * init_measurement_uncertainty
 
@@ -59,7 +83,7 @@ class CustomizedKalmanFilter():
 
     def predict(self):
         x_prime = self.F @ self.x + self.u
-        P_prime = self.F @ self.P @ np.transpose(self.F)
+        P_prime = self.F @ self.P @ np.transpose(self.F) + self.Q
         return x_prime, P_prime
 
     def update_cycle(self, new_measurement):
